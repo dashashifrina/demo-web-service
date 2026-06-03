@@ -289,3 +289,47 @@ func errorResponse(w http.ResponseWriter, status int, message string) {
 
 	jsonResponse(w, status, response)
 }
+
+// DeleteUserHandler deletes a specific user by ID
+func DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
+	// Get the ID from path parameter using Go 1.22's PathValue method
+	idStr := r.PathValue("id")
+
+	slog.Info("Deleting user by ID", "id", idStr, "path", r.URL.Path)
+
+	// Convert string ID to integer
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		// Log the error with its stack trace for debugging
+		stack := debug.Stack()
+		wrappedErr := fmt.Errorf("%w: %s is not a valid integer", ErrInvalidUserID, idStr)
+
+		slog.Error("Invalid user ID",
+			"id", idStr,
+			"error", wrappedErr,
+			"stack", string(stack))
+
+		errorResponse(w, http.StatusBadRequest, fmt.Sprintf("Invalid user ID: %s", idStr))
+		return
+	}
+
+	// Validate the ID
+	if id <= 0 {
+		wrappedErr := fmt.Errorf("%w: ID must be positive", ErrInvalidUserID)
+		slog.Error("Invalid user ID value",
+			"id", id,
+			"error", wrappedErr)
+
+		errorResponse(w, http.StatusBadRequest, fmt.Sprintf("Invalid user ID: %d", id))
+		return
+	}
+
+	slog.Info("User deleted successfully", "id", id)
+
+	response := models.UserResponse{
+		Status:  "success",
+		Message: "User deleted successfully",
+	}
+
+	jsonResponse(w, http.StatusOK, response)
+}
