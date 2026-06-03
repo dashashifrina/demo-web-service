@@ -60,6 +60,7 @@ func main() {
 	mux.HandleFunc("GET /api/users", handlers.GetUsersHandler)
 	mux.HandleFunc("POST /api/users", handlers.CreateUserHandler)
 	mux.HandleFunc("GET /api/users/{id}", handlers.GetUserHandler)
+	mux.HandleFunc("DELETE /api/users/{id}", handlers.DeleteUserHandler)
 	// Add version endpoint
 	mux.HandleFunc("GET /api/version", versionHandler)
 

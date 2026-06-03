@@ -36,6 +36,7 @@ func setupAPITest() *httptest.Server {
 	mux.HandleFunc("GET /api/users", handlers.GetUsersHandler)
 	mux.HandleFunc("POST /api/users", handlers.CreateUserHandler)
 	mux.HandleFunc("GET /api/users/{id}", handlers.GetUserHandler)
+	mux.HandleFunc("DELETE /api/users/{id}", handlers.DeleteUserHandler)
 
 	// Apply middleware
 	var handler http.Handler = mux
@@ -231,6 +232,88 @@ func TestAPIEndpoints(t *testing.T) {
 		// Verify response data
 		if response["status"] != "healthy" {
 			t.Errorf("Expected status 'healthy', got %v", response["status"])
+		}
+	})
+}
+
+// TestDeleteUserEndpoints tests the DELETE /api/users/{id} integration cases
+func TestDeleteUserEndpoints(t *testing.T) {
+	server := setupAPITest()
+	defer server.Close()
+
+	// Test case 1: Successful delete
+	t.Run("Delete User Successfully", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodDelete, server.URL+"/api/users/1", nil)
+		if err != nil {
+			t.Fatalf("Failed to create request: %v", err)
+		}
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("Failed to make request: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("Expected status OK, got %v", resp.Status)
+		}
+
+		// Check content type
+		contentType := resp.Header.Get("Content-Type")
+		if contentType != "application/json" {
+			t.Errorf("Expected content type application/json, got %v", contentType)
+		}
+
+		// Parse response
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("Failed to read response body: %v", err)
+		}
+
+		var response models.UserResponse
+		if err := json.Unmarshal(body, &response); err != nil {
+			t.Fatalf("Failed to parse response JSON: %v", err)
+		}
+
+		if response.Status != "success" {
+			t.Errorf("Expected status 'success', got %v", response.Status)
+		}
+
+		if response.Message != "User deleted successfully" {
+			t.Errorf("Expected message 'User deleted successfully', got %v", response.Message)
+		}
+	})
+
+	// Test case 2: Delete with invalid ID
+	t.Run("Delete User with Invalid ID", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodDelete, server.URL+"/api/users/invalid", nil)
+		if err != nil {
+			t.Fatalf("Failed to create request: %v", err)
+		}
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("Failed to make request: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("Expected status Bad Request, got %v", resp.Status)
+		}
+
+		// Parse response
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("Failed to read response body: %v", err)
+		}
+
+		var response map[string]string
+		if err := json.Unmarshal(body, &response); err != nil {
+			t.Fatalf("Failed to parse response JSON: %v", err)
+		}
+
+		if response["status"] != "error" {
+			t.Errorf("Expected status 'error', got %v", response["status"])
 		}
 	})
 }

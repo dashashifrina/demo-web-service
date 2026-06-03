@@ -206,3 +206,81 @@ func TestCreateUserHandler(t *testing.T) {
 		t.Errorf("handler returned wrong user ID: got %v want %v", response.User.ID, 3)
 	}
 }
+
+// TestDeleteUserHandler tests the DeleteUserHandler
+func TestDeleteUserHandler(t *testing.T) {
+	testCases := []struct {
+		name           string
+		userID         string
+		expectedStatus int
+		isError        bool
+	}{
+		{
+			name:           "Valid ID returns 200",
+			userID:         "1",
+			expectedStatus: http.StatusOK,
+			isError:        false,
+		},
+		{
+			name:           "Invalid ID returns 400",
+			userID:         "abc",
+			expectedStatus: http.StatusBadRequest,
+			isError:        true,
+		},
+		{
+			name:           "Negative ID returns 400",
+			userID:         "-1",
+			expectedStatus: http.StatusBadRequest,
+			isError:        true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create a new ServeMux with the handler registered using Go 1.22 pattern
+			mux := http.NewServeMux()
+			mux.HandleFunc("DELETE /api/users/{id}", DeleteUserHandler)
+
+			// Create a DELETE request
+			req, err := http.NewRequest(http.MethodDelete, "/api/users/"+tc.userID, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			// Create a ResponseRecorder
+			rr := httptest.NewRecorder()
+			mux.ServeHTTP(rr, req)
+
+			// Check the status code
+			if status := rr.Code; status != tc.expectedStatus {
+				t.Errorf("handler returned wrong status code: got %v want %v", status, tc.expectedStatus)
+			}
+
+			// If we expect an error, verify error status in body
+			if tc.isError {
+				var errResp map[string]string
+				if err := json.Unmarshal(rr.Body.Bytes(), &errResp); err != nil {
+					t.Errorf("could not parse error response body: %v", err)
+				}
+				if errResp["status"] != "error" {
+					t.Errorf("expected error status in body, got %v", errResp["status"])
+				}
+				return
+			}
+
+			// Parse the success response
+			var response models.UserResponse
+			if err := json.Unmarshal(rr.Body.Bytes(), &response); err != nil {
+				t.Errorf("could not parse response body: %v", err)
+			}
+
+			if response.Status != "success" {
+				t.Errorf("handler returned wrong status: got %v want %v", response.Status, "success")
+			}
+
+			if response.Message != "User deleted successfully" {
+				t.Errorf("handler returned wrong message: got %v want %v", response.Message, "User deleted successfully")
+			}
+		})
+	}
+}
