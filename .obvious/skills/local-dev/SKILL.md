@@ -1,6 +1,6 @@
 ---
 name: local-dev
-version: 1.0.0
+version: 1.1.0
 description: Bring this repo local development environment up from scratch.
 category: local-dev
 triggers:
@@ -10,6 +10,7 @@ triggers:
   - bring up local stack
 author: autobuild-setup
 created: 2026-06-03
+updated: 2026-10-30
 ---
 
 ## Prerequisites
@@ -47,7 +48,7 @@ No .env file needed - all defaults are safe for local use.
 ## Start
 
     nohup ./demo-web-service > /tmp/demo-web-service.log 2>&1 &
-    # Actual port observed: 8080
+    # Actual port observed in startup log: 8080
 
 Or for development without background:
 
@@ -67,6 +68,14 @@ Or for development without background:
     curl http://localhost:8080/api/users/1
     # Expected: {"status":"success","user":{"name":"User 1","id":1}}
 
+    # Create a user
+    curl -X POST http://localhost:8080/api/users -H 'Content-Type: application/json' -d '{"name":"New User"}'
+    # Expected: 201 {"status":"success","message":"User created successfully","user":{...}}
+
+    # Delete a user (added after last contract refresh)
+    curl -X DELETE http://localhost:8080/api/users/2
+    # Expected: {"status":"success","message":"User deleted successfully"}
+
     # Home
     curl http://localhost:8080/
     # Expected: {"message":"Welcome to the API"}
@@ -75,15 +84,16 @@ Or for development without background:
 
 - Build: go build -o demo-web-service ./cmd/api
 - Vet: go vet ./...
-- Test: go test ./... (9 tests: handlers + integration - all PASS)
+- Test: go test ./... (6 test funcs: handlers unit + tests integration - all PASS, incl. TestDeleteUserHandler/TestDeleteUserEndpoints)
 - Scoped test: go test ./handlers/... -v
 
 ## Sandbox Snapshot
 
-- snapshotId: gbvrpg28ron5icojoq21:default - restoring reproduces verified-healthy state.
+- snapshotId: ybub73g0f9juy3nraz0d:default - restoring reproduces verified-healthy state.
 
 ## Known Blockers / Workarounds
 
 - **Go not in PATH:** Install manually (see Prerequisites). Required Go 1.24+.
 - **Port 8080 in use:** Find process with: ss -tlnp sport = :8080 and kill by PID.
 - **make dev requires Datadog env vars:** Uses orchestrion toolexec + DD_* env vars. Use go run ./cmd/api for plain local dev.
+- **Random handler failures:** In non-test mode, home/list/create endpoints fail randomly by design — retry curls when verifying manually.
